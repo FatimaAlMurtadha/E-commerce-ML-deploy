@@ -220,3 +220,5 @@ __marimo__/
 
 .vscode/
 sklearn-env/
+notebooks/data/otto-recsys-test.jsonl
+notebooks/data/otto-recsys-train.jsonl
