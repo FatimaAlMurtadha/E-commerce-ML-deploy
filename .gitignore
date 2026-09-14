@@ -216,12 +216,9 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
-<<<<<<< HEAD
-=======
 
 
 .vscode/
 sklearn-env/
 notebooks/data/otto-recsys-test.jsonl
 notebooks/data/otto-recsys-train.jsonl
->>>>>>> origin/feat/dataset
