@@ -30,3 +30,11 @@ class FakeModel:
 
 	def predict_proba(self, features):
 		return np.array([[1 - self.probability, self.probability]])
+
+
+def test_load_model_package_raises_when_model_is_missing(monkeypatch):
+	missing_path = Path("missing-model.joblib")
+	monkeypatch.setattr(api, "MODEL_PATH", missing_path)
+
+	with pytest.raises(FileNotFoundError, match="Model not found"):
+		api.load_model_package()
