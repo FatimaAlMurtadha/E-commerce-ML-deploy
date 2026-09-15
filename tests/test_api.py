@@ -134,6 +134,30 @@ def test_load_metadata_reads_json(monkeypatch, tmp_path):
 
 
 
+def test_get_model_info_returns_not_trained_when_metadata_is_empty(monkeypatch):
+	monkeypatch.setattr(api, "load_metadata", lambda: {})
+
+	assert api.get_model_info() == {"error": "Model not trained yet"}
+
+
+def test_get_model_info_exposes_selected_metadata(monkeypatch):
+	metadata = {
+		"model_name": "test-model",
+		"requires_scaling": True,
+		"feature_names": ["num_events"],
+		"test_metrics": {"f1_score": 0.9},
+		"unused": "ignored",
+	}
+	monkeypatch.setattr(api, "load_metadata", lambda: metadata)
+
+	assert api.get_model_info() == {
+		"model_name": "test-model",
+		"requires_scaling": True,
+		"feature_names": ["num_events"],
+		"test_metrics": {"f1_score": 0.9},
+	}
+
+
 
 """  Later, we can add separate integration tests using:
 
