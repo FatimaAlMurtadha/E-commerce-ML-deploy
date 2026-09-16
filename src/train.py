@@ -29,7 +29,9 @@ session_target = (
     .astype(int)
 )
 
-session_features = df_original.groupby("session").agg(
+# Aggregate browsing events (excluding orders to prevent target leakage)
+df_browsing = df_original[df_original["type"] != "orders"]
+session_features = df_browsing.groupby("session").agg(
     num_clicks=("type", lambda x: (x == "clicks").sum()),
     num_carts=("type", lambda x: (x == "carts").sum()),
     num_events=("type", "count"),
