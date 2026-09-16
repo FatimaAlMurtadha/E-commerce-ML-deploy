@@ -14,6 +14,7 @@ def test_model_and_metadata_paths_are_under_model_directory():
     assert config.MODEL_DIR == config.PROJECT_ROOT / "model"
     assert config.MODEL_PATH == config.MODEL_DIR / "ecommerce_pipeline.joblib"
     assert config.META_PATH == config.MODEL_DIR / "metadata.json"
+    
 
 
 # To run the tests, use one of the following command:
