@@ -60,17 +60,12 @@ def load_data(data_path):
 
 
 
-# 2. Build leakage-safe features and target
-#
-# The key leakage fix: for a session that eventually orders,
-# we only use the clicks/carts that happened BEFORE the first
-# order in that session. Events after the first order (and the
-# order event itself) are never used as features. Sessions that
-# never order use all their clicks/carts.
+# 2. Build  features and target
+
 
 
 def create_features_and_target(df):
-    print("Creating leakage-safe features and target...")
+    print("Creating features and target...")
 
     df = df.copy()
     df = df.sort_values(["session", "ts"])
@@ -92,11 +87,11 @@ def create_features_and_target(df):
             target = 0
             feature_data = session_data
 
-        # Never let an order event leak into the features
+        
         feature_data = feature_data[feature_data["type"].isin(["clicks", "carts"])]
 
         if len(feature_data) == 0:
-            # No pre-order browsing signal at all — nothing to predict from
+            
             continue
 
         num_clicks = int((feature_data["type"] == "clicks").sum())
@@ -106,7 +101,7 @@ def create_features_and_target(df):
 
         first_ts = feature_data["ts"].min()
         last_ts = feature_data["ts"].max()
-        session_duration_seconds = (last_ts - first_ts) / 1000.0  # ts is epoch ms
+        session_duration_seconds = (last_ts - first_ts) / 1000.0  
 
         hour = int(feature_data["hour"].iloc[-1])
         weekday = feature_data["weekday"].iloc[-1]
@@ -155,17 +150,12 @@ def prepare_features(session_features):
 
 
 
-# 4. Split data chronologically
-#
-# A random split can put a session that happened AFTER another
-# session into the training set while the earlier one ends up
-# in test. That is a subtle form of leakage for time-ordered
-# clickstream data, so we split by time instead: earliest
-# sessions train, most recent sessions test.
+# 4. Split data 
+
 
 
 def split_data(x, y, prediction_timestamps):
-    print("Splitting data chronologically...")
+    print("Splitting data train and test...")
 
     data = x.copy()
     data["target"] = y.values
