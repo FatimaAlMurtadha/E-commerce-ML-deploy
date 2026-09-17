@@ -10,6 +10,45 @@ The API and trained model are available. `src/ui.py` is currently a placeholder 
 Streamlit frontend, but it is already included in the Compose setup so the UI can be added
 without changing the deployment structure.
 
+## Start the project
+
+You do not need to install Python, `uv`, or the project dependencies. You only need:
+
+- Git
+- Docker Desktop with Docker Compose
+
+1. Clone the repository:
+
+	```bash
+	git clone https://github.com/arbazshah52/E-commerce-ML.git
+	cd E-commerce-ML
+	```
+
+2. Start the application:
+
+	```bash
+	docker compose up --build
+	```
+
+	The first start downloads the Python base image and builds the application image. This
+	can take a few minutes. Later starts are faster because Docker reuses the image layers.
+
+3. Open the services in a browser:
+
+	- API documentation: <http://localhost:8000/docs>
+	- API health: <http://localhost:8000/health>
+	- Streamlit frontend: <http://localhost:8501>
+
+4. Stop the application by pressing `Ctrl+C` in the terminal, or from another terminal run:
+
+	```bash
+	docker compose down
+	```
+
+The API uses the trained model included in the repository. No training command is required
+to start the application. The current Streamlit page is only a placeholder while the user
+interface is being developed.
+
 ## Architecture
 
 ```text
@@ -39,7 +78,12 @@ model/                        Trained model and metadata
 notebooks/                    Exploratory and preparation notebooks
 src/api.py                    FastAPI application
 src/config.py                 Shared project and model paths
-src/train.py                  Feature engineering and model training
+src/train.py                  Training command-line entry point
+src/e_commerce_ml/            Training package
+	data_processing.py          Feature engineering and data splitting
+	model_training.py           Model search, selection, and evaluation
+	artifacts.py                Model and metadata persistence
+	training.py                 Training workflow orchestration
 src/ui.py                     Streamlit entry point
 tests/                        API and configuration tests
 Dockerfile                    Application image definition
@@ -184,6 +228,24 @@ uv run python src/train.py
 The training process performs feature creation, chronological splitting, scaling, grid
 search for Logistic Regression, SVC, and Random Forest models, validation-based model
 selection, final test evaluation, and artifact saving.
+
+### Object-oriented design
+
+The implementation in `src/e_commerce_ml/` uses classes so each object has one main
+responsibility. The modules are separated by technical concern:
+
+| Class              | Responsibility                                | OOP idea      |
+| ------------------ | --------------------------------------------- | ------------- |
+| `DatasetProcessor` | Loads, prepares, and splits session data      | Encapsulation |
+| `ModelTrainer`     | Scales, trains, evaluates, and selects models | Encapsulation |
+| `TrainingPipeline` | Coordinates processing, training, and saving  | Composition   |
+
+`TrainingPipeline` owns a `DatasetProcessor` and `ModelTrainer` instead of implementing
+every detail itself. This is composition: complex behavior is built from smaller
+collaborating objects. Model persistence is kept as a focused `save_model()` function,
+because a separate repository class would add indirection without enough benefit for this
+project. Data processing is in `data_processing.py`, model work is in `model_training.py`,
+and persistence is in `artifacts.py`. `src/train.py` is only the command-line entry point.
 
 ## Tests
 
