@@ -334,4 +334,47 @@ def render_performance_tab(results: dict) -> None:
                     ),
                 )
         st.plotly_chart(style_fig(heat_fig, height=320), use_container_width=True)
+   with col_importance:
+        st.subheader("Feature importance")
+        importances = results["importances"]
+        if importances is not None:
+            names = importances.index.str.replace("_", " ").str.title()
+            importance_fig = go.Figure(
+                go.Bar(x=importances.values, y=names, orientation="h", marker_color=BLUE)
+            )
+            importance_fig.update_xaxes(title=None)
+            importance_fig.update_yaxes(title=None)
+            st.plotly_chart(style_fig(importance_fig, height=320), use_container_width=True)
+        else:
+            st.info(f"{results['best_name']} doesn't expose feature importances directly.")
+
+    st.subheader("Classification report")
+    st.code(results["report"])
+
+
+def render_analysis_tab(events: pd.DataFrame, session_data: pd.DataFrame) -> None:
+    st.write(
+        f"{len(events):,} events across {session_data.shape[0]:,} sessions "
+        f"({session_data['target'].mean():.1%} of sessions placed an order)."
+    )
+
+    col_funnel, col_hour = st.columns(2)
+
+    with col_funnel:
+        st.subheader("Conversion funnel")
+        event_counts = events["type"].value_counts()
+        funnel_fig = go.Figure(
+            go.Funnel(
+                y=["Clicks", "Add to cart", "Orders"],
+                x=[
+                    int(event_counts.get("clicks", 0)),
+                    int(event_counts.get("carts", 0)),
+                    int(event_counts.get("orders", 0)),
+                ],
+                marker={"color": ORDINAL_BLUE},
+                textinfo="value+percent initial",
+                connector={"line": {"color": GRIDLINE, "width": 1}},
+            )
+        )
+        st.plotly_chart(style_fig(funnel_fig, height=320), use_container_width=True)
 
