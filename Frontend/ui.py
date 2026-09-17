@@ -77,3 +77,26 @@ def style_fig(fig: go.Figure, height: int = 320, showlegend: bool = False) -> go
     fig.update_xaxes(showgrid=False, zeroline=False, linecolor=GRIDLINE, color=MUTED_INK)
     fig.update_yaxes(showgrid=True, gridcolor=GRIDLINE, zeroline=False, color=MUTED_INK)
     return fig
+
+@st.cache_data(show_spinner=False)
+def load_events() -> pd.DataFrame:
+    return pd.read_csv(DATA_PATH)
+
+
+@st.cache_data(show_spinner=False)
+def build_session_features(events: pd.DataFrame) -> pd.DataFrame:
+    """Aggregate raw events into one row per session, plus the order label.
+
+    num_events is deliberately "clicks + carts" rather than the raw
+    per-session event count used in the exploratory notebook: the raw count
+    also includes any "orders" rows, which would leak the label we're
+    trying to predict straight into a feature. For a session that hasn't
+    ordered yet (the real prediction use case) only clicks/carts have
+    happened, so training and live inference stay consistent.
+    """
+    target = (
+        events.groupby("session")["type"]
+        .apply(lambda values: "orders" in values.values)
+        .astype(int)
+        .rename("target")
+    )
