@@ -6,7 +6,15 @@ import plotly.graph_objects as go
 import plotly.express as px
 import requests
 import streamlit as st
-from streamlit_lottie import st_lottie, st_lottie_spinner
+try:
+    from streamlit_lottie import st_lottie, st_lottie_spinner
+except ModuleNotFoundError:
+    st_lottie = None
+    from contextlib import contextmanager
+
+    @contextmanager
+    def st_lottie_spinner(*_args, **_kwargs):
+        yield
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
@@ -283,17 +291,17 @@ def render_predict_tab(results: dict) -> None:
         if probability >= 0.66:
             st.balloons()
             success_animation = load_lottie_url(LOTTIE_SUCCESS)
-            if success_animation is not None:
+            if st_lottie is not None and success_animation is not None:
                 st_lottie(success_animation, height=160, key="success_lottie")
     else:
         gauge_slot.plotly_chart(make_gauge(probability_pct), use_container_width=True, key="gauge_static")
 
     if probability >= 0.66:
-        st.success(f"✅ Likely to order — {probability:.1%} purchase probability")
+        st.success(f" Likely to order — {probability:.1%} purchase probability")
     elif probability >= 0.33:
-        st.warning(f"🤔 Uncertain — {probability:.1%} purchase probability, could go either way")
+        st.warning(f" Uncertain — {probability:.1%} purchase probability, could go either way")
     else:
-        st.info(f"💤 Unlikely to order — {probability:.1%} purchase probability")
+        st.info(f" Unlikely to order — {probability:.1%} purchase probability")
 
     st.caption(f"Model used: **{results['best_name']}** (best validation F1-score).")
 
@@ -477,9 +485,8 @@ def main() -> None:
             "Will this browsing session end in an order? Random Forest, Logistic "
             "Regression, and SVC trained on session-level clickstream behavior."
         )
-    with col_lottie:
         welcome_animation = load_lottie_url(LOTTIE_WELCOME)
-        if welcome_animation is not None:
+        if st_lottie is not None and welcome_animation is not None:
             st_lottie(welcome_animation, height=110, key="welcome_lottie")
 
     if not DATA_PATH.exists():
