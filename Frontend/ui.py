@@ -377,4 +377,109 @@ def render_analysis_tab(events: pd.DataFrame, session_data: pd.DataFrame) -> Non
             )
         )
         st.plotly_chart(style_fig(funnel_fig, height=320), use_container_width=True)
+   with col_hour:
+        st.subheader("Events by hour of day")
+        hour_counts = events.groupby("hour").size().reindex(range(24), fill_value=0)
+        hour_fig = go.Figure(
+            go.Scatter(
+                x=hour_counts.index,
+                y=hour_counts.values,
+                mode="lines",
+                line=dict(color=BLUE, width=2),
+                fill="tozeroy",
+                fillcolor="rgba(42,120,214,0.15)",
+                hovertemplate="Hour %{x}:00<br>%{y:,} events<extra></extra>",
+            )
+        )
+        hour_fig.update_xaxes(title="Hour", dtick=4)
+        hour_fig.update_yaxes(title=None)
+        st.plotly_chart(style_fig(hour_fig, height=320), use_container_width=True)
 
+    col_weekday, col_items = st.columns(2)
+
+    with col_weekday:
+        st.subheader("Events by weekday")
+        weekday_order = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+        weekday_counts = events["weekday"].value_counts().reindex(weekday_order, fill_value=0)
+        weekday_fig = go.Figure(
+            go.Bar(
+                x=[day[:3] for day in weekday_order],
+                y=weekday_counts.values,
+                marker_color=BLUE,
+                hovertemplate="%{x}<br>%{y:,} events<extra></extra>",
+            )
+        )
+        weekday_fig.update_yaxes(title=None)
+        st.plotly_chart(style_fig(weekday_fig, height=300), use_container_width=True)
+
+    with col_items:
+        st.subheader("Top 10 most-viewed items")
+        top_items = events["aid"].value_counts().head(10).sort_values()
+        items_fig = go.Figure(
+            go.Bar(
+                x=top_items.values,
+                y=top_items.index.astype(str),
+                orientation="h",
+                marker_color=BLUE,
+                hovertemplate="Item %{y}<br>%{x:,} events<extra></extra>",
+            )
+        )
+        items_fig.update_xaxes(title=None)
+        # Force a category axis: the item ids are numeric-looking strings, and
+        # without this Plotly infers a linear axis and mangles the labels into
+        # tick values like "0.5M" instead of showing each item id.
+        items_fig.update_yaxes(title=None, type="category")
+        st.plotly_chart(style_fig(items_fig, height=300), use_container_width=True)
+
+    st.subheader("Session length distribution")
+    session_lengths = events.groupby("session").size()
+    hist_fig = go.Figure(go.Histogram(x=session_lengths, marker_color=BLUE, nbinsx=40))
+    hist_fig.update_xaxes(title="Events per session")
+    hist_fig.update_yaxes(title="Number of sessions")
+    st.plotly_chart(style_fig(hist_fig, height=280), use_container_width=True)
+
+    st.subheader("Session features (first 20 sessions)")
+    st.dataframe(session_data.head(20), use_container_width=True)
+
+
+def main() -> None:
+    col_title, col_lottie = st.columns([5, 1])
+    with col_title:
+        st.title("🛒 E-commerce Purchase Predictor")
+        st.caption(
+            "Will this browsing session end in an order? Random Forest, Logistic "
+            "Regression, and SVC trained on session-level clickstream behavior."
+        )
+    with col_lottie:
+        welcome_animation = load_lottie_url(LOTTIE_WELCOME)
+        if welcome_animation is not None:
+            st_lottie(welcome_animation, height=110, key="welcome_lottie")
+
+    if not DATA_PATH.exists():
+        st.error(f"Couldn't find the training data at `{DATA_PATH}`.")
+        st.stop()
+
+    events = load_events()
+    session_data = build_session_features(events)
+
+    loading_animation = load_lottie_url(LOTTIE_LOADING)
+    if loading_animation is not None:
+        with st_lottie_spinner(loading_animation, height=160, key="loading_lottie"):
+            results = train_models(session_data)
+    else:
+        results = train_models(session_data)
+
+    predict_tab, performance_tab, analysis_tab = st.tabs(
+        ["🔮 Predict", "📊 Model performance", "🔍 Analysis"]
+    )
+
+    with predict_tab:
+        render_predict_tab(results)
+    with performance_tab:
+        render_performance_tab(results)
+    with analysis_tab:
+        render_analysis_tab(events, session_data)
+
+
+if __name__ == "__main__":
+    main()
