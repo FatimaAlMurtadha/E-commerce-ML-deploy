@@ -10,6 +10,12 @@ requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.141.1",
     "uvicorn[standard]>=0.53.0",
+    "pandas>=2.2",
+    "scikit-learn>=1.5",
+    "streamlit>=1.38",
+    "plotly>=5.24",
+    "streamlit-lottietatus=0.0.5",
+    "requests>=2.32",
 ]
 
 [project.scripts]
