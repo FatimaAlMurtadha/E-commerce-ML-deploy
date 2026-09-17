@@ -234,7 +234,7 @@ def render_predict_tab(results: dict) -> None:
         num_carts = st.number_input("Add-to-carts", min_value=0, value=0, step=1)
     with col2:
         num_unique_items = st.number_input("Unique items viewed", min_value=0, value=8, step=1)
-        go_button = st.button("🔮 Predict", type="primary", use_container_width=True)
+        go_button = st.button(" Predict", type="primary", use_container_width=True)
 
     num_events = num_clicks + num_carts
     input_row = pd.DataFrame(
@@ -265,3 +265,12 @@ def render_predict_tab(results: dict) -> None:
                 st_lottie(success_animation, height=160, key="success_lottie")
     else:
         gauge_slot.plotly_chart(make_gauge(probability_pct), use_container_width=True, key="gauge_static")
+if probability >= 0.66:
+        st.success(f" Likely to order — {probability:.1%} purchase probability")
+    elif probability >= 0.33:
+        st.warning(f" Uncertain — {probability:.1%} purchase probability, could go either way")
+    else:
+        st.info(f" Unlikely to order — {probability:.1%} purchase probability")
+
+    st.caption(f"Model used: **{results['best_name']}** (best validation F1-score).")
+
