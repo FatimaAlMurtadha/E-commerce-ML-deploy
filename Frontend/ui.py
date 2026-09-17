@@ -43,3 +43,21 @@ MODEL_COLORS = {"Random Forest": BLUE, "Logistic Regression": ORANGE, "SVC": AQU
 LOTTIE_WELCOME = "https://assets5.lottiefiles.com/packages/lf20_V9t630.json"
 LOTTIE_SUCCESS = "https://raw.githubusercontent.com/ariyanshiputech/custom_quick_alert/main/assets/animations/success.json"
 LOTTIE_LOADING = "https://raw.githubusercontent.com/ariyanshiputech/custom_quick_alert/main/assets/animations/loading.json"
+
+@st.cache_data(show_spinner=False, ttl=3600)
+def load_lottie_url(url: str):
+    """Fetch a Lottie animation's JSON from a URL. Returns None on any
+    failure (empty URL, network error, bad response, invalid JSON) so a
+    missing or stale animation never crashes the page -- callers just skip
+    rendering it."""
+    if not url:
+        return None
+    try:
+        response = requests.get(url, timeout=5)
+        response.raise_for_status()
+        return response.json()
+    except (requests.RequestException, ValueError):
+        return None
+
+
+st.set_page_config(page_title="E-commerce Purchase Predictor", page_icon="🛒", layout="wide")
