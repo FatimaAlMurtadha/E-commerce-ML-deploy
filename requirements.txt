@@ -3,10 +3,12 @@ numpy
 scikit-learn
 joblib
 fastapi
-uvicorn
+uvicorn[standard]
 streamlit
 httpx
-pydentic
-ipykernal
+pydantic
 matplotlib
 pytest
+typing
+requests
+mlflow
