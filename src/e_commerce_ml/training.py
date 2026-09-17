@@ -62,3 +62,51 @@ class DatasetSplit:
     x_train_val: pd.DataFrame
     y_train_val: pd.Series
 
+
+class SessionFeatureBuilder:
+    """Convert raw event rows into one labelled row per usable session."""
+
+    def build(self, events: pd.DataFrame) -> pd.DataFrame:
+        print("Creating features and target...")
+        events = events.copy().sort_values(["session", "ts"])
+        rows = []
+
+        for session_id, session_data in events.groupby("session"):
+            session_data = session_data.sort_values("ts")
+            order_mask = session_data["type"] == "orders"
+
+            if order_mask.any():
+                target = 1
+                first_order_pos = order_mask.values.argmax()
+                feature_data = session_data.iloc[:first_order_pos]
+            else:
+                target = 0
+                feature_data = session_data
+
+            feature_data = feature_data[feature_data["type"].isin(["clicks", "carts"])]
+            if len(feature_data) == 0:
+                continue
+
+            first_ts = feature_data["ts"].min()
+            last_ts = feature_data["ts"].max()
+            rows.append(
+                {
+                    "session": session_id,
+                    "num_clicks": int((feature_data["type"] == "clicks").sum()),
+                    "num_carts": int((feature_data["type"] == "carts").sum()),
+                    "num_events": len(feature_data),
+                    "num_unique_items": feature_data["aid"].nunique(),
+                    "session_duration_seconds": (last_ts - first_ts) / 1000.0,
+                    "hour": int(feature_data["hour"].iloc[-1]),
+                    "weekday": feature_data["weekday"].iloc[-1],
+                    "target": target,
+                    "prediction_timestamp": last_ts,
+                }
+            )
+
+        session_features = pd.DataFrame(rows).sort_values("prediction_timestamp")
+        print("Number of sessions:", len(session_features))
+        print("Number of features:", len(FEATURE_COLUMNS))
+        print("Target distribution:")
+        print(session_features["target"].value_counts())
+        return session_features
