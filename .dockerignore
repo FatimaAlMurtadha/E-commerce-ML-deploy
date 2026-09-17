@@ -1,0 +1,10 @@
+.git
+.github
+.vscode
+.venv
+sklearn-env
+__pycache__
+.pytest_cache
+.ipynb_checkpoints
+notebooks
+*.py[cod]
