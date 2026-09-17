@@ -1,0 +1,32 @@
+{
+  "model_name": "SVC",
+  "requires_scaling": true,
+  "test_metrics": {
+    "accuracy": 0.823321554770318,
+    "precision": 0.09495548961424333,
+    "recall": 0.4155844155844156,
+    "f1_score": 0.15458937198067632,
+    "roc_auc": 0.7555931463494489,
+    "average_precision": 0.08821613273340217
+  },
+  "feature_names": [
+    "num_clicks",
+    "num_carts",
+    "num_events",
+    "num_unique_items",
+    "session_duration_seconds",
+    "hour",
+    "weekday"
+  ],
+  "target": {
+    "0": "No order",
+    "1": "Order"
+  },
+  "data_leakage_prevention": [
+    "Orders are never used as input features",
+    "For sessions that order, only clicks/carts before the FIRST order are used",
+    "Split is chronological (train = earliest sessions, test = most recent)",
+    "Scaler is fit only on training data, then applied to val/test",
+    "Test data is untouched during model selection and hyperparameter tuning"
+  ]
+}
