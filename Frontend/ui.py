@@ -110,3 +110,15 @@ features = events.groupby("session").agg(
     features = features[FEATURE_COLUMNS]
 
     return features.join(target)
+@st.cache_resource(show_spinner="Training Random Forest, Logistic Regression, and SVC...")
+def train_models(session_data: pd.DataFrame) -> dict:
+    x = session_data[FEATURE_COLUMNS]
+    y = session_data["target"]
+
+    x_train_val, x_test, y_train_val, y_test = train_test_split(
+        x, y, test_size=0.2, random_state=42, stratify=y
+    )
+
+    scaler = StandardScaler()
+    x_train_val_scaled = scaler.fit_transform(x_train_val)
+    x_test_scaled = scaler.transform(x_test)
