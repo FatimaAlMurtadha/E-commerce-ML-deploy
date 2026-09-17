@@ -224,3 +224,44 @@ ef make_gauge(probability_pct: float) -> go.Figure:
         font={"color": PRIMARY_INK, "family": FONT_FAMILY},
     )
     return fig
+def render_predict_tab(results: dict) -> None:
+    st.subheader("Try a session")
+    st.write("Describe a session so far and watch the model estimate a purchase probability.")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        num_clicks = st.number_input("Clicks", min_value=0, value=10, step=1)
+        num_carts = st.number_input("Add-to-carts", min_value=0, value=0, step=1)
+    with col2:
+        num_unique_items = st.number_input("Unique items viewed", min_value=0, value=8, step=1)
+        go_button = st.button("🔮 Predict", type="primary", use_container_width=True)
+
+    num_events = num_clicks + num_carts
+    input_row = pd.DataFrame(
+        [[num_clicks, num_carts, num_events, num_unique_items]], columns=FEATURE_COLUMNS
+    )
+    model_input = (
+        results["scaler"].transform(input_row) if results["best_needs_scaling"] else input_row
+    )
+    probability = float(results["best_model"].predict_proba(model_input)[0, 1])
+    probability_pct = probability * 100
+
+    gauge_slot = st.empty()
+
+    if go_button:
+        # Animate the gauge sweeping up to the predicted value.
+        frames = 20
+        for step in range(1, frames + 1):
+            gauge_slot.plotly_chart(
+                make_gauge(probability_pct * step / frames),
+                use_container_width=True,
+                key=f"gauge_frame_{step}",
+            )
+            time.sleep(0.02)
+        if probability >= 0.66:
+            st.balloons()
+            success_animation = load_lottie_url(LOTTIE_SUCCESS)
+            if success_animation is not None:
+                st_lottie(success_animation, height=160, key="success_lottie")
+    else:
+        gauge_slot.plotly_chart(make_gauge(probability_pct), use_container_width=True, key="gauge_static")
