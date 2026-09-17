@@ -273,4 +273,65 @@ if probability >= 0.66:
         st.info(f" Unlikely to order — {probability:.1%} purchase probability")
 
     st.caption(f"Model used: **{results['best_name']}** (best validation F1-score).")
+def render_performance_tab(results: dict) -> None:
+    st.subheader("Model comparison")
+    st.caption("All three models trained on the same 80% split, scored on the held-out 20% test set.")
+
+    melted = results["comparison"].melt(
+        id_vars="model",
+        value_vars=["accuracy", "precision", "recall", "f1_score", "roc_auc"],
+        var_name="metric",
+        value_name="value",
+    )
+    melted["metric"] = melted["metric"].str.replace("_", " ").str.title()
+
+    comparison_fig = px.bar(
+        melted,
+        x="metric",
+        y="value",
+        color="model",
+        barmode="group",
+        color_discrete_map=MODEL_COLORS,
+        category_orders={"model": ["Random Forest", "Logistic Regression", "SVC"]},
+    )
+    comparison_fig.update_traces(hovertemplate="%{x}<br>%{y:.3f}<extra>%{fullData.name}</extra>")
+    comparison_fig.update_yaxes(title=None, range=[0, 1])
+    comparison_fig.update_xaxes(title=None)
+    st.plotly_chart(style_fig(comparison_fig, height=360, showlegend=True), use_container_width=True)
+
+    st.divider()
+
+    col_matrix, col_importance = st.columns(2)
+
+    with col_matrix:
+        st.subheader(f"Confusion matrix — {results['best_name']}")
+        labels_x = ["Predicted: No order", "Predicted: Order"]
+        labels_y = ["Actual: No order", "Actual: Order"]
+        matrix = results["matrix"]
+
+        heat_fig = go.Figure(
+            data=go.Heatmap(
+                z=matrix,
+                x=labels_x,
+                y=labels_y,
+                colorscale=[[0, SEQ_BLUE[0]], [1, SEQ_BLUE[5]]],
+                showscale=False,
+                hovertemplate="Actual: %{y}<br>Predicted: %{x}<br>Count: %{z}<extra></extra>",
+            )
+        )
+        max_val = matrix.max()
+        for i, y_label in enumerate(labels_y):
+            for j, x_label in enumerate(labels_x):
+                val = matrix[i][j]
+                heat_fig.add_annotation(
+                    x=x_label,
+                    y=y_label,
+                    text=str(val),
+                    showarrow=False,
+                    font=dict(
+                        color="#ffffff" if val > max_val * 0.5 else PRIMARY_INK,
+                        size=18,
+                    ),
+                )
+        st.plotly_chart(style_fig(heat_fig, height=320), use_container_width=True)
 
