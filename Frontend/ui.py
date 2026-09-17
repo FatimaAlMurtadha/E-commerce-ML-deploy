@@ -1,5 +1,6 @@
 import time
 from pathlib import Path
+
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
@@ -20,6 +21,7 @@ from sklearn.metrics import (
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
+
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = PROJECT_ROOT / "data" / "events_10000_sessions.csv"
 
@@ -39,10 +41,18 @@ GRIDLINE = "#e1e0d9"
 FONT_FAMILY = "system-ui, -apple-system, 'Segoe UI', sans-serif"
 MODEL_COLORS = {"Random Forest": BLUE, "Logistic Regression": ORANGE, "SVC": AQUA}
 
-#Lottie animation
+# --- Lottie animations (https://lottiefiles.com) -----------------------------
+# LOTTIE_WELCOME is a verified, working public animation (a friendly wave) so
+# the app has at least one Lottie moment out of the box. LOTTIE_SUCCESS and
+# LOTTIE_LOADING are left as placeholders: pick any free animation you like on
+# lottiefiles.com, open it, use "Download" -> "Lottie JSON" (or the copy-URL
+# button) to get a direct .json URL, and paste it in below. Every call site
+# checks for None first, so leaving a placeholder empty (or a URL that stops
+# working later) never breaks the app -- it just skips that animation.
 LOTTIE_WELCOME = "https://assets5.lottiefiles.com/packages/lf20_V9t630.json"
 LOTTIE_SUCCESS = "https://raw.githubusercontent.com/ariyanshiputech/custom_quick_alert/main/assets/animations/success.json"
 LOTTIE_LOADING = "https://raw.githubusercontent.com/ariyanshiputech/custom_quick_alert/main/assets/animations/loading.json"
+
 
 @st.cache_data(show_spinner=False, ttl=3600)
 def load_lottie_url(url: str):
@@ -62,6 +72,7 @@ def load_lottie_url(url: str):
 
 st.set_page_config(page_title="E-commerce Purchase Predictor", page_icon="🛒", layout="wide")
 
+
 def style_fig(fig: go.Figure, height: int = 320, showlegend: bool = False) -> go.Figure:
     """Apply one consistent, minimal look to every chart in the app."""
     fig.update_layout(
@@ -77,6 +88,7 @@ def style_fig(fig: go.Figure, height: int = 320, showlegend: bool = False) -> go
     fig.update_xaxes(showgrid=False, zeroline=False, linecolor=GRIDLINE, color=MUTED_INK)
     fig.update_yaxes(showgrid=True, gridcolor=GRIDLINE, zeroline=False, color=MUTED_INK)
     return fig
+
 
 @st.cache_data(show_spinner=False)
 def load_events() -> pd.DataFrame:
@@ -101,7 +113,7 @@ def build_session_features(events: pd.DataFrame) -> pd.DataFrame:
         .rename("target")
     )
 
-features = events.groupby("session").agg(
+    features = events.groupby("session").agg(
         num_clicks=("type", lambda values: (values == "clicks").sum()),
         num_carts=("type", lambda values: (values == "carts").sum()),
         num_unique_items=("aid", "nunique"),
@@ -110,6 +122,8 @@ features = events.groupby("session").agg(
     features = features[FEATURE_COLUMNS]
 
     return features.join(target)
+
+
 @st.cache_resource(show_spinner="Training Random Forest, Logistic Regression, and SVC...")
 def train_models(session_data: pd.DataFrame) -> dict:
     x = session_data[FEATURE_COLUMNS]
@@ -122,7 +136,11 @@ def train_models(session_data: pd.DataFrame) -> dict:
     scaler = StandardScaler()
     x_train_val_scaled = scaler.fit_transform(x_train_val)
     x_test_scaled = scaler.transform(x_test)
-models = {
+
+    # Fixed, already-reasonable hyperparameters instead of the notebook's
+    # full GridSearchCV sweep, so the app trains in seconds rather than
+    # minutes on startup.
+    models = {
         "Random Forest": RandomForestClassifier(
             n_estimators=300,
             min_samples_leaf=2,
@@ -189,7 +207,9 @@ models = {
         "report": report,
         "importances": importances,
     }
-ef make_gauge(probability_pct: float) -> go.Figure:
+
+
+def make_gauge(probability_pct: float) -> go.Figure:
     fig = go.Figure(
         go.Indicator(
             mode="gauge+number",
@@ -224,6 +244,8 @@ ef make_gauge(probability_pct: float) -> go.Figure:
         font={"color": PRIMARY_INK, "family": FONT_FAMILY},
     )
     return fig
+
+
 def render_predict_tab(results: dict) -> None:
     st.subheader("Try a session")
     st.write("Describe a session so far and watch the model estimate a purchase probability.")
@@ -234,7 +256,7 @@ def render_predict_tab(results: dict) -> None:
         num_carts = st.number_input("Add-to-carts", min_value=0, value=0, step=1)
     with col2:
         num_unique_items = st.number_input("Unique items viewed", min_value=0, value=8, step=1)
-        go_button = st.button(" Predict", type="primary", use_container_width=True)
+        go_button = st.button("🔮 Predict", type="primary", use_container_width=True)
 
     num_events = num_clicks + num_carts
     input_row = pd.DataFrame(
@@ -265,14 +287,17 @@ def render_predict_tab(results: dict) -> None:
                 st_lottie(success_animation, height=160, key="success_lottie")
     else:
         gauge_slot.plotly_chart(make_gauge(probability_pct), use_container_width=True, key="gauge_static")
-if probability >= 0.66:
-        st.success(f" Likely to order — {probability:.1%} purchase probability")
+
+    if probability >= 0.66:
+        st.success(f"✅ Likely to order — {probability:.1%} purchase probability")
     elif probability >= 0.33:
-        st.warning(f" Uncertain — {probability:.1%} purchase probability, could go either way")
+        st.warning(f"🤔 Uncertain — {probability:.1%} purchase probability, could go either way")
     else:
-        st.info(f" Unlikely to order — {probability:.1%} purchase probability")
+        st.info(f"💤 Unlikely to order — {probability:.1%} purchase probability")
 
     st.caption(f"Model used: **{results['best_name']}** (best validation F1-score).")
+
+
 def render_performance_tab(results: dict) -> None:
     st.subheader("Model comparison")
     st.caption("All three models trained on the same 80% split, scored on the held-out 20% test set.")
@@ -334,7 +359,8 @@ def render_performance_tab(results: dict) -> None:
                     ),
                 )
         st.plotly_chart(style_fig(heat_fig, height=320), use_container_width=True)
-   with col_importance:
+
+    with col_importance:
         st.subheader("Feature importance")
         importances = results["importances"]
         if importances is not None:
@@ -377,7 +403,8 @@ def render_analysis_tab(events: pd.DataFrame, session_data: pd.DataFrame) -> Non
             )
         )
         st.plotly_chart(style_fig(funnel_fig, height=320), use_container_width=True)
-   with col_hour:
+
+    with col_hour:
         st.subheader("Events by hour of day")
         hour_counts = events.groupby("hour").size().reindex(range(24), fill_value=0)
         hour_fig = go.Figure(
@@ -470,7 +497,7 @@ def main() -> None:
         results = train_models(session_data)
 
     predict_tab, performance_tab, analysis_tab = st.tabs(
-        ["🔮 Predict", "📊 Model performance", "🔍 Analysis"]
+        [" Predict", " Model performance", " Analysis"]
     )
 
     with predict_tab:
