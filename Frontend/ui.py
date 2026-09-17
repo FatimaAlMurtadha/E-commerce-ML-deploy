@@ -100,3 +100,13 @@ def build_session_features(events: pd.DataFrame) -> pd.DataFrame:
         .astype(int)
         .rename("target")
     )
+
+features = events.groupby("session").agg(
+        num_clicks=("type", lambda values: (values == "clicks").sum()),
+        num_carts=("type", lambda values: (values == "carts").sum()),
+        num_unique_items=("aid", "nunique"),
+    )
+    features["num_events"] = features["num_clicks"] + features["num_carts"]
+    features = features[FEATURE_COLUMNS]
+
+    return features.join(target)
