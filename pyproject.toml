@@ -24,6 +24,12 @@ dependencies = [
     "requests>=2.32",
 ]
 
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=8.0.0",
+]
+
 [project.scripts]
 e-commerce-ml = "e_commerce_ml:main"
 
