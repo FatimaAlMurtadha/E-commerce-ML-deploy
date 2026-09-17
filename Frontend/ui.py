@@ -38,3 +38,8 @@ MUTED_INK = "#898781"
 GRIDLINE = "#e1e0d9"
 FONT_FAMILY = "system-ui, -apple-system, 'Segoe UI', sans-serif"
 MODEL_COLORS = {"Random Forest": BLUE, "Logistic Regression": ORANGE, "SVC": AQUA}
+
+#Lottie animation
+LOTTIE_WELCOME = "https://assets5.lottiefiles.com/packages/lf20_V9t630.json"
+LOTTIE_SUCCESS = "https://raw.githubusercontent.com/ariyanshiputech/custom_quick_alert/main/assets/animations/success.json"
+LOTTIE_LOADING = "https://raw.githubusercontent.com/ariyanshiputech/custom_quick_alert/main/assets/animations/loading.json"
