@@ -32,6 +32,9 @@ jobs:
       - name: Run tests
         run: uv run python -m pytest -q
 
+      - name: Compile training modules
+        run: uv run python -m compileall -q src
+
       - name: Validate Compose configuration
         run: docker compose config --quiet
 
