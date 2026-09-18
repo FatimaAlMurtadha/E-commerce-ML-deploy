@@ -186,6 +186,16 @@ def test_make_gauge_creates_valid_indicator():
     assert data.gauge.threshold.value == 50
 
 
+def test_explain_prediction_returns_customer_and_company_guidance():
+    explanation = ui.explain_prediction(0.72, 15, 1, 16, 6)
+
+    assert explanation["risk_level"] == "high"
+    assert explanation["summary"]
+    assert explanation["reasons"]
+    assert explanation["company_action"]
+    assert explanation["customer_message"]
+
+
 def test_style_fig_applies_layout_properties():
     import plotly.graph_objects as go
     raw_fig = go.Figure(go.Bar(x=[1, 2], y=[3, 4]))
