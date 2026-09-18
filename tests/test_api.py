@@ -89,6 +89,24 @@ def test_predict_zero_and_edge_values(client, monkeypatch):
     assert data["prediction"] == 0
     assert data["order"] is False
     assert data["probability"] == 0.05
+    assert data["risk_level"] == "low"
+    assert data["company_action"]
+    assert data["customer_message"]
+
+
+def test_predict_returns_reasons_and_action_for_high_intent_session(client, monkeypatch):
+    monkeypatch.setattr(api, "model", None)
+    response = client.post(
+        "/predict",
+        json={"num_clicks": 20, "num_carts": 2, "num_events": 22, "num_unique_items": 8},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["risk_level"] == "high"
+    assert len(data["reasons"]) >= 3
+    assert "cart" in data["reasons"][0].lower()
+    assert "discount" in data["company_action"].lower()
 
 
 # ---------------------------------------------------------------------------
