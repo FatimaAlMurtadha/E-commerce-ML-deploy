@@ -30,6 +30,11 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
 
+try:
+    from src.e_commerce_ml.explanations import explain_prediction
+except ImportError:
+    from e_commerce_ml.explanations import explain_prediction
+
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = PROJECT_ROOT / "data" / "events_10000_sessions.csv"
 
@@ -302,6 +307,26 @@ def render_predict_tab(results: dict) -> None:
         st.warning(f" Uncertain — {probability:.1%} purchase probability, could go either way")
     else:
         st.info(f" Unlikely to order — {probability:.1%} purchase probability")
+
+    explanation = explain_prediction(
+        probability=probability,
+        num_clicks=num_clicks,
+        num_carts=num_carts,
+        num_events=num_events,
+        num_unique_items=num_unique_items,
+    )
+    st.subheader("Why this result?")
+    st.write(explanation["summary"])
+    for reason in explanation["reasons"]:
+        st.write(f"- {reason}")
+
+    company_col, customer_col = st.columns(2)
+    with company_col:
+        st.subheader("Suggested company action")
+        st.info(explanation["company_action"])
+    with customer_col:
+        st.subheader("Possible customer message")
+        st.info(explanation["customer_message"])
 
     st.caption(f"Model used: **{results['best_name']}** (best validation F1-score).")
 
