@@ -72,6 +72,23 @@ def test_predict_accepts_extra_fields(client, monkeypatch):
     assert response.status_code == 200
 
 
+def test_health_reports_model_name(client, monkeypatch):
+    monkeypatch.setattr(api, "model", object())
+
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    assert response.json()["model_name"] == "SVC"
+
+
+def test_model_info_reports_backend_artifact(client):
+    response = client.get("/model-info")
+
+    assert response.status_code == 200
+    assert response.json()["model_name"] == "SVC"
+    assert "test_metrics" in response.json()
+
+
 def test_predict_zero_and_edge_values(client, monkeypatch):
     monkeypatch.setattr(api, "model", None)
     payload = {
