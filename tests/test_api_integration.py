@@ -25,7 +25,7 @@ def test_health_endpoint_reports_when_model_is_not_loaded(client, monkeypatch):
 	response = client.get("/health")
 
 	assert response.status_code == 200
-	assert response.json() == {"status": "ok", "model_loaded": False}
+	assert response.json() == {"status": "ok", "model_loaded": False, "model_name": None}
 
 
 def test_predict_endpoint_uses_fallback_for_low_order_probability(client, monkeypatch):
@@ -131,7 +131,7 @@ def test_health_endpoint_reports_when_model_is_loaded(client, monkeypatch):
 	response = client.get("/health")
 
 	assert response.status_code == 200
-	assert response.json() == {"status": "ok", "model_loaded": True}
+	assert response.json() == {"status": "ok", "model_loaded": True, "model_name": "SVC"}
 
 
 def test_predict_endpoint_with_persisted_model(client):
