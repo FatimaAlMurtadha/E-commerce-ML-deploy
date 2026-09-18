@@ -6,8 +6,8 @@ from fastapi.testclient import TestClient
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.pipeline import Pipeline
 
-from src import api
-from src.api import app, load_model, SessionInput, PredictionOutput
+from backend import api
+from backend.api import app, load_model, SessionInput, PredictionOutput
 
 
 @pytest.fixture

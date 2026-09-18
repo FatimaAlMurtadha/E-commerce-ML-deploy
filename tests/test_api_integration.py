@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 from fastapi.testclient import TestClient
 
-from src import api
+from backend import api
 
 
 @pytest.fixture

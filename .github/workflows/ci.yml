@@ -33,7 +33,7 @@ jobs:
         run: uv run python -m pytest -q
 
       - name: Compile training modules
-        run: uv run python -m compileall -q src
+        run: uv run python -m compileall -q backend frontend
 
       - name: Validate Compose configuration
         run: docker compose config --quiet

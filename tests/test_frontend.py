@@ -10,14 +10,12 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-FRONTEND_FILE = PROJECT_ROOT / "Frontend" / "ui.py"
-SRC_UI_FILE = PROJECT_ROOT / "src" / "ui.py"
-STREAMLIT_ENTRYPOINT = PROJECT_ROOT / "src" / "streamlit_app.py"
-APP_FILE = FRONTEND_FILE if FRONTEND_FILE.exists() else STREAMLIT_ENTRYPOINT
+FRONTEND_FILE = PROJECT_ROOT / "frontend" / "ui.py"
+APP_FILE = PROJECT_ROOT / "frontend" / "streamlit_app.py"
 
 # Dual-PR compatibility guard:
 # If this branch does not have the frontend files, skip cleanly.
-if not FRONTEND_FILE.exists() and not SRC_UI_FILE.exists():
+if not FRONTEND_FILE.exists():
     pytestmark = pytest.mark.skip(reason="Frontend code is not present on this branch.")
 
 # Ensure the app directory is importable
@@ -26,10 +24,7 @@ if str(APP_FILE.parent) not in sys.path:
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-try:
-    from Frontend import ui
-except ImportError:
-    import ui
+from frontend import ui
 
 
 # ---------------------------------------------------------------------------
