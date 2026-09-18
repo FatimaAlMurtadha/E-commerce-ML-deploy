@@ -91,13 +91,25 @@ def test_build_session_features_aggregates_clicks_carts_unique_items(sample_even
     features = ui.build_session_features(sample_events_df)
 
     assert set(features.index) == {1, 2, 3}
-    assert list(features.columns) == ["num_clicks", "num_carts", "num_events", "num_unique_items", "target"]
+    assert list(features.columns) == [
+        "num_clicks",
+        "num_carts",
+        "num_events",
+        "num_unique_items",
+        "session_duration_seconds",
+        "hour",
+        "weekday",
+        "target",
+    ]
 
     # Session 1: 3 clicks, 1 cart, 2 unique items (101, 102)
     s1 = features.loc[1]
     assert s1["num_clicks"] == 3
     assert s1["num_carts"] == 1
     assert s1["num_unique_items"] == 2
+    assert s1["session_duration_seconds"] == 0.15
+    assert s1["hour"] == 10
+    assert s1["weekday"] == 0
 
     # Session 2: 2 clicks, 0 carts, 2 unique items
     s2 = features.loc[2]
@@ -257,6 +269,9 @@ def test_streamlit_app_loads_headless():
     assert "Clicks" in labels
     assert "Add-to-carts" in labels
     assert "Unique items viewed" in labels
+    assert "Session duration (seconds)" in labels
+    assert any(widget.label == "Last activity hour" for widget in at.slider)
+    assert any(widget.label == "Last activity weekday" for widget in at.selectbox)
 
     # Verify the Predict button exists
     buttons = [b.label for b in at.button]
