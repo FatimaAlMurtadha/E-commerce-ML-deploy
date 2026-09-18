@@ -17,7 +17,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    command: streamlit run src/ui.py --server.address 0.0.0.0 --server.port 8501
+    command: streamlit run src/streamlit_app.py --server.address 0.0.0.0 --server.port 8501
     environment:
       API_URL: http://api:8000
     ports:

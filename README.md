@@ -1,14 +1,13 @@
 # E-commerce ML
 
 Machine-learning project that predicts whether an e-commerce session will result in an
-order. It contains a training pipeline, a FastAPI prediction service, a planned Streamlit
+order. It contains a training pipeline, a FastAPI prediction service, a Streamlit
 frontend, a Docker Compose setup, and GitHub Actions CI.
 
 ## Project status
 
-The API and trained model are available. `src/ui.py` is currently a placeholder for the
-Streamlit frontend, but it is already included in the Compose setup so the UI can be added
-without changing the deployment structure.
+The API, trained model, and Streamlit frontend are available. The UI is launched through
+`src/streamlit_app.py`, which delegates to the implementation in `src/ui.py`.
 
 ## Start the project
 
@@ -19,35 +18,33 @@ You do not need to install Python, `uv`, or the project dependencies. You only n
 
 1. Clone the repository:
 
-	```bash
-	git clone https://github.com/arbazshah52/E-commerce-ML.git
-	cd E-commerce-ML
-	```
+   ```bash
+   git clone https://github.com/arbazshah52/E-commerce-ML.git
+   cd E-commerce-ML
+   ```
 
 2. Start the application:
 
-	```bash
-	docker compose up --build
-	```
+   ```bash
+   docker compose up --build
+   ```
 
-	The first start downloads the Python base image and builds the application image. This
-	can take a few minutes. Later starts are faster because Docker reuses the image layers.
+   The first start downloads the Python base image and builds the application image. This
+   can take a few minutes. Later starts are faster because Docker reuses the image layers.
 
 3. Open the services in a browser:
-
-	- API documentation: <http://localhost:8000/docs>
-	- API health: <http://localhost:8000/health>
-	- Streamlit frontend: <http://localhost:8501>
+   - API documentation: <http://localhost:8000/docs>
+   - API health: <http://localhost:8000/health>
+   - Streamlit frontend: <http://localhost:8501>
 
 4. Stop the application by pressing `Ctrl+C` in the terminal, or from another terminal run:
 
-	```bash
-	docker compose down
-	```
+   ```bash
+   docker compose down
+   ```
 
 The API uses the trained model included in the repository. No training command is required
-to start the application. The current Streamlit page is only a placeholder while the user
-interface is being developed.
+to start the application.
 
 ## Architecture
 
@@ -84,7 +81,8 @@ src/e_commerce_ml/            Training package
 	model_training.py           Model search, selection, and evaluation
 	artifacts.py                Model and metadata persistence
 	training.py                 Training workflow orchestration
-src/ui.py                     Streamlit entry point
+src/ui.py                     Streamlit UI implementation
+src/streamlit_app.py          Streamlit container entry point
 tests/                        API and configuration tests
 Dockerfile                    Application image definition
 docker-compose.yml            API and UI services

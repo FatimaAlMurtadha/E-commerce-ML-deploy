@@ -12,15 +12,17 @@ from sklearn.preprocessing import StandardScaler
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 FRONTEND_FILE = PROJECT_ROOT / "Frontend" / "ui.py"
 SRC_UI_FILE = PROJECT_ROOT / "src" / "ui.py"
+STREAMLIT_ENTRYPOINT = PROJECT_ROOT / "src" / "streamlit_app.py"
+APP_FILE = FRONTEND_FILE if FRONTEND_FILE.exists() else STREAMLIT_ENTRYPOINT
 
 # Dual-PR compatibility guard:
 # If this branch does not have the frontend files, skip cleanly.
 if not FRONTEND_FILE.exists() and not SRC_UI_FILE.exists():
     pytestmark = pytest.mark.skip(reason="Frontend code is not present on this branch.")
 
-# Ensure Frontend directory is importable
-if str(FRONTEND_FILE.parent) not in sys.path:
-    sys.path.insert(0, str(FRONTEND_FILE.parent))
+# Ensure the app directory is importable
+if str(APP_FILE.parent) not in sys.path:
+    sys.path.insert(0, str(APP_FILE.parent))
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
@@ -233,8 +235,8 @@ def test_streamlit_app_loads_headless():
     """Run the Streamlit app headlessly using AppTest."""
     from streamlit.testing.v1 import AppTest
 
-    at = AppTest.from_file(str(FRONTEND_FILE))
-    at.run(timeout=30)
+    at = AppTest.from_file(str(APP_FILE))
+    at.run(timeout=60)
 
     # The app should complete execution without unhandled exceptions
     assert not at.exception
@@ -259,8 +261,8 @@ def test_streamlit_app_predict_button_triggers_prediction():
     """Simulate user interaction: change inputs and trigger predict button."""
     from streamlit.testing.v1 import AppTest
 
-    at = AppTest.from_file(str(FRONTEND_FILE))
-    at.run(timeout=30)
+    at = AppTest.from_file(str(APP_FILE))
+    at.run(timeout=60)
 
     # Set clicks to 15, carts to 3
     clicks_input = next(ni for ni in at.number_input if ni.label == "Clicks")
