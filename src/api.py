@@ -9,6 +9,11 @@ import joblib
 from sklearn.pipeline import Pipeline
 
 try:
+    from src.e_commerce_ml.explanations import explain_prediction
+except ImportError:
+    from e_commerce_ml.explanations import explain_prediction
+
+try:
     from src.config import MODEL_PATH
 except ImportError:
     try:
@@ -37,6 +42,11 @@ class PredictionOutput(BaseModel):
     prediction: int
     order: bool
     probability: float
+    risk_level: str
+    summary: str
+    reasons: list[str]
+    company_action: str
+    customer_message: str
 
 # Initiering och CORS
 app = FastAPI()
@@ -118,10 +128,19 @@ def predict_order(session: SessionInput):
         prob = min(0.95, max(0.05, session.num_carts * 0.3 + session.num_clicks * 0.02))
         pred = 1 if prob >= 0.5 else 0
 
+    explanation = explain_prediction(
+        probability=prob,
+        num_clicks=session.num_clicks,
+        num_carts=session.num_carts,
+        num_events=session.num_events,
+        num_unique_items=session.num_unique_items,
+    )
+
     return PredictionOutput(
         prediction=pred,
         order=(pred == 1),
-        probability=round(prob, 4)
+        probability=round(prob, 4),
+        **explanation,
     )
 
 if __name__ == "__main__":
