@@ -1,5 +1,6 @@
 # Importeringar
 from pathlib import Path
+import json
 from typing import Optional, Union
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -15,11 +16,14 @@ except ImportError:
 
 try:
     from src.config import MODEL_PATH
+    from src.config import META_PATH
 except ImportError:
     try:
         from config import MODEL_PATH
+        from config import META_PATH
     except ImportError:
         MODEL_PATH = Path(__file__).resolve().parents[1] / "model" / "ecommerce_pipeline.joblib"
+        META_PATH = MODEL_PATH.with_name("metadata.json")
 
 if not MODEL_PATH.exists():
     local_fallback = Path(__file__).resolve().parent / "model.joblib"
@@ -100,7 +104,22 @@ def read_root():
 
 @app.get("/health")
 def health_check():
-    return {"status": "ok", "model_loaded": model is not None}
+    return {
+        "status": "ok",
+        "model_loaded": model is not None,
+        "model_name": "SVC" if model is not None else None,
+    }
+
+
+@app.get("/model-info")
+def model_info():
+    """Return metadata for the model used by the prediction service."""
+    if not META_PATH.exists():
+        return {"model_loaded": model is not None, "model_name": "SVC" if model is not None else None}
+    try:
+        return json.loads(META_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {"model_loaded": model is not None, "model_name": "SVC" if model is not None else None}
 
 @app.post("/predict", response_model=PredictionOutput)
 def predict_order(session: SessionInput):
