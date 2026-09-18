@@ -1,4 +1,5 @@
 import time
+import os
 from pathlib import Path
 
 import pandas as pd
@@ -39,6 +40,11 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = PROJECT_ROOT / "data" / "events_10000_sessions.csv"
 
 FEATURE_COLUMNS = ["num_clicks", "num_carts", "num_events", "num_unique_items"]
+MODEL_FEATURE_COLUMNS = FEATURE_COLUMNS + [
+    "session_duration_seconds",
+    "hour",
+    "weekday",
+]
 SCALED_MODELS = {"Logistic Regression", "SVC"}
 
 # --- Validated palette (dataviz skill reference palette; light mode) ---
@@ -53,6 +59,7 @@ MUTED_INK = "#898781"
 GRIDLINE = "#e1e0d9"
 FONT_FAMILY = "system-ui, -apple-system, 'Segoe UI', sans-serif"
 MODEL_COLORS = {"Random Forest": BLUE, "Logistic Regression": ORANGE, "SVC": AQUA}
+API_URL = os.getenv("API_URL", "http://localhost:8000")
 
 # --- Lottie animations (https://lottiefiles.com) -----------------------------
 # LOTTIE_WELCOME is a verified, working public animation (a friendly wave) so
@@ -85,6 +92,33 @@ def load_lottie_url(url: str):
 
 st.set_page_config(page_title="E-commerce Purchase Predictor", page_icon="🛒", layout="wide")
 
+st.markdown(
+    """
+    <style>
+    .explanation-kicker {
+        color: #2a78d6;
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        margin-bottom: -0.45rem;
+    }
+    .explanation-title {
+        color: #0b0b0b;
+        font-size: 1.45rem;
+        font-weight: 750;
+        margin-bottom: 0.2rem;
+    }
+    .explanation-summary {
+        color: #52514e;
+        font-size: 1rem;
+        margin-bottom: 0.7rem;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 
 def style_fig(fig: go.Figure, height: int = 320, showlegend: bool = False) -> go.Figure:
     """Apply one consistent, minimal look to every chart in the app."""
@@ -108,6 +142,27 @@ def load_events() -> pd.DataFrame:
     return pd.read_csv(DATA_PATH)
 
 
+def request_prediction(payload: dict) -> dict | None:
+    """Request a prediction from the FastAPI domain service."""
+    try:
+        response = requests.post(f"{API_URL}/predict", json=payload, timeout=0.5)
+        response.raise_for_status()
+        return response.json()
+    except (requests.RequestException, ValueError):
+        return None
+
+
+@st.cache_data(show_spinner=False, ttl=30)
+def get_api_model_info() -> dict | None:
+    """Read the model metadata advertised by the prediction service."""
+    try:
+        response = requests.get(f"{API_URL}/model-info", timeout=0.5)
+        response.raise_for_status()
+        return response.json()
+    except (requests.RequestException, ValueError):
+        return None
+
+
 @st.cache_data(show_spinner=False)
 def build_session_features(events: pd.DataFrame) -> pd.DataFrame:
     """Aggregate raw events into one row per session, plus the order label.
@@ -126,20 +181,39 @@ def build_session_features(events: pd.DataFrame) -> pd.DataFrame:
         .rename("target")
     )
 
-    features = events.groupby("session").agg(
-        num_clicks=("type", lambda values: (values == "clicks").sum()),
-        num_carts=("type", lambda values: (values == "carts").sum()),
-        num_unique_items=("aid", "nunique"),
-    )
-    features["num_events"] = features["num_clicks"] + features["num_carts"]
-    features = features[FEATURE_COLUMNS]
+    rows = []
+    for session_id, session_events in events.groupby("session"):
+        session_events = session_events.sort_values("ts")
+        order_mask = session_events["type"] == "orders"
+        feature_events = session_events.iloc[: order_mask.values.argmax()] if order_mask.any() else session_events
+        feature_events = feature_events[feature_events["type"].isin(["clicks", "carts"])]
+        if feature_events.empty:
+            continue
+        rows.append(
+            {
+                "session": session_id,
+                "num_clicks": int((feature_events["type"] == "clicks").sum()),
+                "num_carts": int((feature_events["type"] == "carts").sum()),
+                "num_events": len(feature_events),
+                "num_unique_items": feature_events["aid"].nunique(),
+                "session_duration_seconds": (feature_events["ts"].max() - feature_events["ts"].min()) / 1000.0,
+                "hour": int(feature_events["hour"].iloc[-1]),
+                "weekday": feature_events["weekday"].iloc[-1],
+            }
+        )
+    features = pd.DataFrame(rows).set_index("session")
+    features["weekday"] = features["weekday"].map(
+        {"Monday": 0, "Tuesday": 1, "Wednesday": 2, "Thursday": 3,
+         "Friday": 4, "Saturday": 5, "Sunday": 6}
+    ).fillna(0)
+    features = features[MODEL_FEATURE_COLUMNS]
 
     return features.join(target)
 
 
 @st.cache_resource(show_spinner="Training Random Forest, Logistic Regression, and SVC...")
 def train_models(session_data: pd.DataFrame) -> dict:
-    x = session_data[FEATURE_COLUMNS]
+    x = session_data.reindex(columns=MODEL_FEATURE_COLUMNS, fill_value=0)
     y = session_data["target"]
 
     x_train_val, x_test, y_train_val, y_test = train_test_split(
@@ -207,7 +281,7 @@ def train_models(session_data: pd.DataFrame) -> dict:
     importances = None
     if hasattr(best_model, "feature_importances_"):
         importances = pd.Series(
-            best_model.feature_importances_, index=FEATURE_COLUMNS
+            best_model.feature_importances_, index=MODEL_FEATURE_COLUMNS
         ).sort_values()
 
     return {
@@ -259,27 +333,54 @@ def make_gauge(probability_pct: float) -> go.Figure:
     return fig
 
 
-def render_predict_tab(results: dict) -> None:
+def render_predict_tab(model_info: dict | None) -> None:
     st.subheader("Try a session")
     st.write("Describe a session so far and watch the model estimate a purchase probability.")
 
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
     with col1:
         num_clicks = st.number_input("Clicks", min_value=0, value=10, step=1)
         num_carts = st.number_input("Add-to-carts", min_value=0, value=0, step=1)
     with col2:
         num_unique_items = st.number_input("Unique items viewed", min_value=0, value=8, step=1)
-        go_button = st.button("🔮 Predict", type="primary", use_container_width=True)
+        session_duration_seconds = st.number_input(
+            "Session duration (seconds)", min_value=0.0, value=120.0, step=10.0
+        )
+    with col3:
+        hour = st.slider("Last activity hour", min_value=0, max_value=23, value=18)
+        weekday = st.selectbox(
+            "Last activity weekday",
+            ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+            index=4,
+        )
+
+    go_button = st.button("Predict purchase likelihood", type="primary", use_container_width=True)
 
     num_events = num_clicks + num_carts
-    input_row = pd.DataFrame(
-        [[num_clicks, num_carts, num_events, num_unique_items]], columns=FEATURE_COLUMNS
-    )
-    model_input = (
-        results["scaler"].transform(input_row) if results["best_needs_scaling"] else input_row
-    )
-    probability = float(results["best_model"].predict_proba(model_input)[0, 1])
+    api_prediction = None
+    if go_button:
+        api_prediction = request_prediction(
+            {
+                "num_clicks": int(num_clicks),
+                "num_carts": int(num_carts),
+                "num_events": int(num_events),
+                "num_unique_items": int(num_unique_items),
+                "session_duration_seconds": float(session_duration_seconds),
+                "hour": int(hour),
+                "weekday": weekday,
+            }
+        )
+        if api_prediction is None:
+            st.error("The prediction service is unavailable. Start the API and try again.")
+            return
+
+    probability = float(api_prediction["probability"]) if api_prediction else 0.0
     probability_pct = probability * 100
+
+    if api_prediction is None:
+        st.plotly_chart(make_gauge(0), use_container_width=True, key="gauge_waiting")
+        st.info("Enter the session details and click Predict to request a backend prediction.")
+        return
 
     gauge_slot = st.empty()
 
@@ -308,32 +409,65 @@ def render_predict_tab(results: dict) -> None:
     else:
         st.info(f" Unlikely to order — {probability:.1%} purchase probability")
 
-    explanation = explain_prediction(
-        probability=probability,
-        num_clicks=num_clicks,
-        num_carts=num_carts,
-        num_events=num_events,
-        num_unique_items=num_unique_items,
+    explanation = api_prediction
+    st.markdown('<div class="explanation-kicker">Model interpretation</div>', unsafe_allow_html=True)
+    st.markdown('<div class="explanation-title">Why this result?</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="explanation-summary">{explanation["summary"]}</div>', unsafe_allow_html=True)
+
+    with st.container(border=True):
+        metric_cols = st.columns(4)
+        metric_cols[0].metric("Purchase probability", f"{probability:.1%}")
+        metric_cols[1].metric("Session duration", f"{session_duration_seconds:.0f} sec")
+        metric_cols[2].metric("Last activity", f"{weekday[:3]} {hour:02d}:00")
+        metric_cols[3].metric("Intent level", explanation["risk_level"].title())
+
+        st.markdown("**Signals from this session**")
+        for reason in explanation["reasons"]:
+            st.markdown(f"- {reason}")
+
+        company_col, customer_col = st.columns(2)
+        with company_col:
+            st.markdown("**Recommended company action**")
+            st.info(explanation["company_action"])
+        with customer_col:
+            st.markdown("**Draft customer message**")
+            st.info(explanation["customer_message"])
+
+    st.caption(
+        "Prediction source: FastAPI service"
+        if api_prediction is not None
+        else "Prediction source: local model (API unavailable)"
     )
-    st.subheader("Why this result?")
-    st.write(explanation["summary"])
-    for reason in explanation["reasons"]:
-        st.write(f"- {reason}")
 
-    company_col, customer_col = st.columns(2)
-    with company_col:
-        st.subheader("Suggested company action")
-        st.info(explanation["company_action"])
-    with customer_col:
-        st.subheader("Possible customer message")
-        st.info(explanation["customer_message"])
-
-    st.caption(f"Model used: **{results['best_name']}** (best validation F1-score).")
+    backend_model_name = model_info.get("model_name") if model_info else None
+    if backend_model_name is not None:
+        st.caption(f"Model used by the backend: **{backend_model_name}**")
+    else:
+        st.caption("Backend model information is unavailable.")
 
 
-def render_performance_tab(results: dict) -> None:
+def render_performance_tab(results: dict | None, model_info: dict | None = None) -> None:
+    if model_info is not None:
+        st.subheader(f"Backend model: {model_info.get('model_name', 'Unknown')}")
+        st.caption("These metrics belong to the model currently used by the prediction API.")
+        metrics = model_info.get("test_metrics", {})
+        if metrics:
+            metric_columns = st.columns(len(metrics))
+            for column, (name, value) in zip(metric_columns, metrics.items()):
+                column.metric(name.replace("_", " ").title(), f"{value:.3f}")
+        st.info("Model selection, training, and inference are owned by the backend service.")
+        return
+
+    if results is None:
+        st.subheader("Backend model performance")
+        st.info("Connect to the backend API to view the model used for predictions.")
+        return
+
     st.subheader("Model comparison")
-    st.caption("All three models trained on the same 80% split, scored on the held-out 20% test set.")
+    st.caption(
+        "Local comparison of three candidate models. The API prediction model is selected "
+        "during the reproducible training pipeline and may differ from this comparison."
+    )
 
     melted = results["comparison"].melt(
         id_vars="model",
@@ -521,21 +655,18 @@ def main() -> None:
     events = load_events()
     session_data = build_session_features(events)
 
-    loading_animation = load_lottie_url(LOTTIE_LOADING)
-    if loading_animation is not None:
-        with st_lottie_spinner(loading_animation, height=160, key="loading_lottie"):
-            results = train_models(session_data)
-    else:
-        results = train_models(session_data)
+    model_info = get_api_model_info()
+    if model_info is None:
+        st.warning("The backend API is not reachable. The dashboard will show analytics, but predictions require the API.")
 
     predict_tab, performance_tab, analysis_tab = st.tabs(
         [" Predict", " Model performance", " Analysis"]
     )
 
     with predict_tab:
-        render_predict_tab(results)
+        render_predict_tab(model_info)
     with performance_tab:
-        render_performance_tab(results)
+        render_performance_tab(None, model_info)
     with analysis_tab:
         render_analysis_tab(events, session_data)
 
