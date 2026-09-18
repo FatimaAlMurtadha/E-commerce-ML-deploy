@@ -485,6 +485,7 @@ def main() -> None:
             "Will this browsing session end in an order? Random Forest, Logistic "
             "Regression, and SVC trained on session-level clickstream behavior."
         )
+    with col_lottie:
         welcome_animation = load_lottie_url(LOTTIE_WELCOME)
         if st_lottie is not None and welcome_animation is not None:
             st_lottie(welcome_animation, height=110, key="welcome_lottie")
