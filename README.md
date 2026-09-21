@@ -150,3 +150,27 @@ GitHub Actions installs dependencies, runs the tests, compiles both application 
 - `frontend/streamlit_app.py` on port 8501
 
 The frontend receives `API_URL=http://api:8000` inside the Compose network.
+
+## Deploying the services
+
+The frontend and backend are separate processes. Deploy the backend as a web
+service first, then deploy the Streamlit app and set its environment variable:
+
+```text
+API_URL=https://<your-backend-host>
+```
+
+`BACKEND_URL` is also accepted. Do not set this to `localhost` in a hosted
+Streamlit app: that points to the frontend container, not to the API service.
+The backend must listen on `0.0.0.0` and use the hosting provider's `PORT`
+value, for example:
+
+```bash
+uvicorn backend.api:app --host 0.0.0.0 --port $PORT
+```
+
+Verify the backend before opening the frontend by visiting
+`https://<your-backend-host>/health`. It should return `status: ok` and
+`model_loaded: true`. The frontend uses a 0.5-second request timeout by
+default; set `API_TIMEOUT_SECONDS=5` or higher if the provider has a slower
+cold start.
