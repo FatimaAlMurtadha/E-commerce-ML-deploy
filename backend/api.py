@@ -66,6 +66,15 @@ FEATURE_DEFAULTS = {
     "weekday": 0,
 }
 
+
+def loaded_model_name():
+    if not META_PATH.exists():
+        return "SVC"
+    try:
+        return json.loads(META_PATH.read_text(encoding="utf-8")).get("model_name", "SVC")
+    except (OSError, json.JSONDecodeError):
+        return "SVC"
+
 # Modellhantering
 def load_model(path: Path = MODEL_PATH):
     if not path.exists():
@@ -94,7 +103,7 @@ def health_check():
     return {
         "status": "ok",
         "model_loaded": model is not None,
-        "model_name": "SVC" if model is not None else None,
+        "model_name": loaded_model_name() if model is not None else None,
     }
 
 
@@ -102,11 +111,11 @@ def health_check():
 def model_info():
     """Return metadata for the model used by the prediction service."""
     if not META_PATH.exists():
-        return {"model_loaded": model is not None, "model_name": "SVC" if model is not None else None}
+        return {"model_loaded": model is not None, "model_name": loaded_model_name() if model is not None else None}
     try:
         return json.loads(META_PATH.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
-        return {"model_loaded": model is not None, "model_name": "SVC" if model is not None else None}
+        return {"model_loaded": model is not None, "model_name": loaded_model_name() if model is not None else None}
 
 @app.post("/predict", response_model=PredictionOutput)
 def predict_order(session: SessionInput):

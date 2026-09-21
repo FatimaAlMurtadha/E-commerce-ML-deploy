@@ -5,8 +5,24 @@ import joblib
 from .data_processing import FEATURE_COLUMNS
 
 
+def _json_default(value):
+    """Convert NumPy scalar values produced by scikit-learn to JSON values."""
+    if hasattr(value, "item"):
+        return value.item()
+    raise TypeError(f"Object of type {type(value).__name__} is not JSON serializable")
+
+
 # the artifacts module is responsible for saving the trained model and its metadata to disk
-def save_model(model, scaler, model_name, test_metrics, model_path, metadata_path):
+def save_model(
+    model,
+    scaler,
+    model_name,
+    test_metrics,
+    model_path,
+    metadata_path,
+    validation_results=None,
+    search_results=None,
+):
     """Persist the trained model package and its evaluation metadata."""
     print("Saving model...")
     model_path.parent.mkdir(parents=True, exist_ok=True)
@@ -17,6 +33,8 @@ def save_model(model, scaler, model_name, test_metrics, model_path, metadata_pat
         "model_name": model_name,
         "requires_scaling": scaler is not None,
         "test_metrics": test_metrics,
+        "validation_results": validation_results or [],
+        "hyperparameter_search": search_results or [],
         "feature_names": FEATURE_COLUMNS,
         "target": {"0": "No order", "1": "Order"},
         "data_leakage_prevention": [
@@ -28,5 +46,5 @@ def save_model(model, scaler, model_name, test_metrics, model_path, metadata_pat
         ],
     }
     with metadata_path.open("w", encoding="utf-8") as metadata_file:
-        json.dump(metadata, metadata_file, indent=2)
+        json.dump(metadata, metadata_file, indent=2, default=_json_default)
     print("Metadata saved to:", metadata_path)

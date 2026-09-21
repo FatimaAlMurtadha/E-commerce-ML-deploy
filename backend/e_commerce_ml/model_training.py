@@ -87,6 +87,7 @@ class ModelTrainer:
 
         models = {}
         validation_results = []
+        search_results = []
         for key, (name, estimator, parameters, train_data, validation_data) in candidates.items():
             print(f"Training {name}...")
             search = GridSearchCV(estimator, parameters, scoring="f1", cv=5, n_jobs=-1)
@@ -96,9 +97,34 @@ class ModelTrainer:
             probabilities = model.predict_proba(validation_data)[:, 1]
             print(f"Best {name} parameters:", search.best_params_)
             models[key] = model
+            search_results.append(
+                {
+                    "model_key": key,
+                    "model": name,
+                    "best_params": search.best_params_,
+                    "best_cv_score": search.best_score_,
+                    "trials": [
+                        {
+                            "params": trial_params,
+                            "mean_test_score": mean_score,
+                            "std_test_score": std_score,
+                            "rank_test_score": rank,
+                        }
+                        for trial_params, mean_score, std_score, rank in zip(
+                            search.cv_results_["params"],
+                            search.cv_results_["mean_test_score"],
+                            search.cv_results_["std_test_score"],
+                            search.cv_results_["rank_test_score"],
+                        )
+                    ],
+                }
+            )
             validation_results.append(
                 {
+                    "model_key": key,
                     "model": name,
+                    "best_params": search.best_params_,
+                    "best_cv_score": search.best_score_,
                     **self.evaluate(split.y_val, predictions, probabilities),
                 }
             )
@@ -108,7 +134,7 @@ class ModelTrainer:
         )
         print("\nValidation results:")
         print(results.to_string(index=False))
-        return models, results
+        return models, results, search_results
 
     def select_and_evaluate(self, models, results, split: DatasetSplit):
         print("Selecting best model...")

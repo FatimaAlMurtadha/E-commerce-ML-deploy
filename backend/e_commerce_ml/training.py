@@ -29,11 +29,20 @@ class TrainingPipeline:
         session_features = self.dataset.create_session_features(events)
         x, y, timestamps = self.dataset.prepare_features(session_features)
         split = self.dataset.split_data(x, y, timestamps)
-        models, results = self.trainer.train_candidates(split)
+        models, results, search_results = self.trainer.train_candidates(split)
         model, scaler, model_name, test_metrics = self.trainer.select_and_evaluate(
             models, results, split
         )
-        save_model(model, scaler, model_name, test_metrics, MODEL_PATH, META_PATH)
+        save_model(
+            model,
+            scaler,
+            model_name,
+            test_metrics,
+            MODEL_PATH,
+            META_PATH,
+            validation_results=results.to_dict(orient="records"),
+            search_results=search_results,
+        )
         print("-------------------------")
         print("Training completed!")
         print("Best model:", model_name)
