@@ -41,7 +41,6 @@ def main() -> None:
         st.stop()
 
     events = load_events()
-    session_data = build_session_features(events)
     model_info = get_api_model_info()
     if model_info is None:
         st.warning("The backend API is not reachable. Predictions require the API.")
@@ -52,7 +51,11 @@ def main() -> None:
     with performance_tab:
         render_performance_tab(model_info)
     with analysis_tab:
-        render_analysis_tab(events, session_data)
+        if st.button("Load analysis", type="secondary"):
+            session_data = build_session_features(events)
+            render_analysis_tab(events, session_data)
+        else:
+            st.info("Load the analysis when you need session-level charts and metrics.")
 
 
 if __name__ == "__main__":
