@@ -4,7 +4,7 @@ import pandas as pd
 import requests
 import streamlit as st
 
-from frontend.ui_config import API_URL, DATA_PATH
+from frontend.ui_config import API_TIMEOUT_SECONDS, API_URL, DATA_PATH
 
 
 @st.cache_data(show_spinner=False, ttl=3600)
@@ -27,7 +27,9 @@ def load_events() -> pd.DataFrame:
 def request_prediction(payload: dict) -> dict | None:
     """Request a prediction from the backend domain service."""
     try:
-        response = requests.post(f"{API_URL}/predict", json=payload, timeout=0.5)
+        response = requests.post(
+            f"{API_URL}/predict", json=payload, timeout=API_TIMEOUT_SECONDS
+        )
         response.raise_for_status()
         return response.json()
     except (requests.RequestException, ValueError):
@@ -37,7 +39,9 @@ def request_prediction(payload: dict) -> dict | None:
 @st.cache_data(show_spinner=False, ttl=30)
 def get_api_model_info() -> dict | None:
     try:
-        response = requests.get(f"{API_URL}/model-info", timeout=0.5)
+        response = requests.get(
+            f"{API_URL}/model-info", timeout=API_TIMEOUT_SECONDS
+        )
         response.raise_for_status()
         return response.json()
     except (requests.RequestException, ValueError):
