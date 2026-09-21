@@ -156,12 +156,24 @@ The frontend receives `API_URL=http://api:8000` inside the Compose network.
 The frontend and backend are separate processes. Deploy the backend as a web
 service first, then deploy the Streamlit app and set its environment variable:
 
-```text
-API_URL=https://<your-backend-host>
+For Streamlit Community Cloud, add this under **App settings > Secrets**:
+
+```toml
+API_URL = "https://<your-backend-host>"
+API_TIMEOUT_SECONDS = "5"
 ```
 
-`BACKEND_URL` is also accepted. Do not set this to `localhost` in a hosted
-Streamlit app: that points to the frontend container, not to the API service.
+For other hosting providers, configure the same values as environment
+variables:
+
+```text
+API_URL=https://<your-backend-host>
+API_TIMEOUT_SECONDS=5
+```
+
+`BACKEND_URL` is also accepted as an environment variable. Do not set this to
+`localhost` in a hosted Streamlit app: that points to the frontend container,
+not to the API service.
 The backend must listen on `0.0.0.0` and use the hosting provider's `PORT`
 value, for example:
 

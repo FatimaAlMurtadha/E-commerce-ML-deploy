@@ -3,11 +3,33 @@
 import os
 from pathlib import Path
 
+import streamlit as st
+
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = PROJECT_ROOT / "data" / "events_10000_sessions.csv"
-API_URL = (os.getenv("API_URL") or os.getenv("BACKEND_URL") or "http://localhost:8000").rstrip("/")
+
 try:
-    API_TIMEOUT_SECONDS = max(0.1, float(os.getenv("API_TIMEOUT_SECONDS", "0.5")))
+    STREAMLIT_API_URL = st.secrets.get("API_URL")
+    STREAMLIT_API_TIMEOUT = st.secrets.get("API_TIMEOUT_SECONDS")
+except FileNotFoundError:
+    STREAMLIT_API_URL = None
+    STREAMLIT_API_TIMEOUT = None
+
+# Determine the API URL and timeout, with fallbacks to environment variables and defaults
+API_URL = (
+    STREAMLIT_API_URL
+    or os.getenv("API_URL")
+    or os.getenv("BACKEND_URL")
+    or "http://localhost:8000"
+).rstrip("/")
+try:
+    API_TIMEOUT_SECONDS = max(
+        0.1,
+        float(
+            STREAMLIT_API_TIMEOUT
+            or os.getenv("API_TIMEOUT_SECONDS", "0.5")
+        ),
+    )
 except ValueError:
     API_TIMEOUT_SECONDS = 0.5
 
