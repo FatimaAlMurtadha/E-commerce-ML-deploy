@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 from fastapi.testclient import TestClient
 
-from src import api
+from backend import api
 
 
 @pytest.fixture
@@ -25,7 +25,7 @@ def test_health_endpoint_reports_when_model_is_not_loaded(client, monkeypatch):
 	response = client.get("/health")
 
 	assert response.status_code == 200
-	assert response.json() == {"status": "ok", "model_loaded": False}
+	assert response.json() == {"status": "ok", "model_loaded": False, "model_name": None}
 
 
 def test_predict_endpoint_uses_fallback_for_low_order_probability(client, monkeypatch):
@@ -42,11 +42,14 @@ def test_predict_endpoint_uses_fallback_for_low_order_probability(client, monkey
 	)
 
 	assert response.status_code == 200
-	assert response.json() == {
-		"prediction": 0,
-		"order": False,
-		"probability": 0.05,
-	}
+	data = response.json()
+	assert data["prediction"] == 0
+	assert data["order"] is False
+	assert data["probability"] == 0.05
+	assert data["risk_level"] == "low"
+	assert data["reasons"]
+	assert data["company_action"]
+	assert data["customer_message"]
 
 
 def test_predict_endpoint_uses_fallback_for_high_order_probability(client, monkeypatch):
@@ -63,11 +66,14 @@ def test_predict_endpoint_uses_fallback_for_high_order_probability(client, monke
 	)
 
 	assert response.status_code == 200
-	assert response.json() == {
-		"prediction": 1,
-		"order": True,
-		"probability": 0.95,
-	}
+	data = response.json()
+	assert data["prediction"] == 1
+	assert data["order"] is True
+	assert data["probability"] == 0.95
+	assert data["risk_level"] == "high"
+	assert data["reasons"]
+	assert data["company_action"]
+	assert data["customer_message"]
 
 
 def test_predict_endpoint_uses_loaded_model(client, monkeypatch):
@@ -97,11 +103,14 @@ def test_predict_endpoint_uses_loaded_model(client, monkeypatch):
 	)
 
 	assert response.status_code == 200
-	assert response.json() == {
-		"prediction": 1,
-		"order": True,
-		"probability": 0.8766,
-	}
+	data = response.json()
+	assert data["prediction"] == 1
+	assert data["order"] is True
+	assert data["probability"] == 0.8766
+	assert data["risk_level"] == "high"
+	assert data["reasons"]
+	assert data["company_action"]
+	assert data["customer_message"]
 
 
 def test_predict_endpoint_rejects_incomplete_payload(client):
@@ -122,7 +131,7 @@ def test_health_endpoint_reports_when_model_is_loaded(client, monkeypatch):
 	response = client.get("/health")
 
 	assert response.status_code == 200
-	assert response.json() == {"status": "ok", "model_loaded": True}
+	assert response.json() == {"status": "ok", "model_loaded": True, "model_name": "SVC"}
 
 
 def test_predict_endpoint_with_persisted_model(client):

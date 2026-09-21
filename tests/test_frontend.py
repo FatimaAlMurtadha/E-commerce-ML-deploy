@@ -10,14 +10,12 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-FRONTEND_FILE = PROJECT_ROOT / "Frontend" / "ui.py"
-SRC_UI_FILE = PROJECT_ROOT / "src" / "ui.py"
-STREAMLIT_ENTRYPOINT = PROJECT_ROOT / "src" / "streamlit_app.py"
-APP_FILE = FRONTEND_FILE if FRONTEND_FILE.exists() else STREAMLIT_ENTRYPOINT
+FRONTEND_FILE = PROJECT_ROOT / "frontend" / "ui.py"
+APP_FILE = PROJECT_ROOT / "frontend" / "streamlit_app.py"
 
 # Dual-PR compatibility guard:
 # If this branch does not have the frontend files, skip cleanly.
-if not FRONTEND_FILE.exists() and not SRC_UI_FILE.exists():
+if not FRONTEND_FILE.exists():
     pytestmark = pytest.mark.skip(reason="Frontend code is not present on this branch.")
 
 # Ensure the app directory is importable
@@ -26,10 +24,7 @@ if str(APP_FILE.parent) not in sys.path:
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-try:
-    from Frontend import ui
-except ImportError:
-    import ui
+from frontend import ui
 
 
 # ---------------------------------------------------------------------------
@@ -91,13 +86,25 @@ def test_build_session_features_aggregates_clicks_carts_unique_items(sample_even
     features = ui.build_session_features(sample_events_df)
 
     assert set(features.index) == {1, 2, 3}
-    assert list(features.columns) == ["num_clicks", "num_carts", "num_events", "num_unique_items", "target"]
+    assert list(features.columns) == [
+        "num_clicks",
+        "num_carts",
+        "num_events",
+        "num_unique_items",
+        "session_duration_seconds",
+        "hour",
+        "weekday",
+        "target",
+    ]
 
     # Session 1: 3 clicks, 1 cart, 2 unique items (101, 102)
     s1 = features.loc[1]
     assert s1["num_clicks"] == 3
     assert s1["num_carts"] == 1
     assert s1["num_unique_items"] == 2
+    assert s1["session_duration_seconds"] == 0.15
+    assert s1["hour"] == 10
+    assert s1["weekday"] == 0
 
     # Session 2: 2 clicks, 0 carts, 2 unique items
     s2 = features.loc[2]
@@ -186,6 +193,16 @@ def test_make_gauge_creates_valid_indicator():
     assert data.gauge.threshold.value == 50
 
 
+def test_explain_prediction_returns_customer_and_company_guidance():
+    explanation = ui.explain_prediction(0.72, 15, 1, 16, 6)
+
+    assert explanation["risk_level"] == "high"
+    assert explanation["summary"]
+    assert explanation["reasons"]
+    assert explanation["company_action"]
+    assert explanation["customer_message"]
+
+
 def test_style_fig_applies_layout_properties():
     import plotly.graph_objects as go
     raw_fig = go.Figure(go.Bar(x=[1, 2], y=[3, 4]))
@@ -247,6 +264,9 @@ def test_streamlit_app_loads_headless():
     assert "Clicks" in labels
     assert "Add-to-carts" in labels
     assert "Unique items viewed" in labels
+    assert "Session duration (seconds)" in labels
+    assert any(widget.label == "Last activity hour" for widget in at.slider)
+    assert any(widget.label == "Last activity weekday" for widget in at.selectbox)
 
     # Verify the Predict button exists
     buttons = [b.label for b in at.button]

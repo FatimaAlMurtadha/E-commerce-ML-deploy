@@ -1,7 +1,0 @@
-"""Streamlit entrypoint used when the UI module is imported by tests."""
-
-from ui import main
-
-
-if __name__ == "__main__":
-    main()

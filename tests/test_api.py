@@ -6,8 +6,8 @@ from fastapi.testclient import TestClient
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.pipeline import Pipeline
 
-from src import api
-from src.api import app, load_model, SessionInput, PredictionOutput
+from backend import api
+from backend.api import app, load_model, SessionInput, PredictionOutput
 
 
 @pytest.fixture
@@ -72,6 +72,23 @@ def test_predict_accepts_extra_fields(client, monkeypatch):
     assert response.status_code == 200
 
 
+def test_health_reports_model_name(client, monkeypatch):
+    monkeypatch.setattr(api, "model", object())
+
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    assert response.json()["model_name"] == "SVC"
+
+
+def test_model_info_reports_backend_artifact(client):
+    response = client.get("/model-info")
+
+    assert response.status_code == 200
+    assert response.json()["model_name"] == "SVC"
+    assert "test_metrics" in response.json()
+
+
 def test_predict_zero_and_edge_values(client, monkeypatch):
     monkeypatch.setattr(api, "model", None)
     payload = {
@@ -89,6 +106,24 @@ def test_predict_zero_and_edge_values(client, monkeypatch):
     assert data["prediction"] == 0
     assert data["order"] is False
     assert data["probability"] == 0.05
+    assert data["risk_level"] == "low"
+    assert data["company_action"]
+    assert data["customer_message"]
+
+
+def test_predict_returns_reasons_and_action_for_high_intent_session(client, monkeypatch):
+    monkeypatch.setattr(api, "model", None)
+    response = client.post(
+        "/predict",
+        json={"num_clicks": 20, "num_carts": 2, "num_events": 22, "num_unique_items": 8},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["risk_level"] == "high"
+    assert len(data["reasons"]) >= 3
+    assert "cart" in data["reasons"][0].lower()
+    assert "discount" in data["company_action"].lower()
 
 
 # ---------------------------------------------------------------------------
