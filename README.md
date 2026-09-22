@@ -64,6 +64,8 @@ weekday
 
 For sessions containing an order, only clicks and carts before the first order are used. The checked-in model is currently an SVC with scaling. Its metadata and recorded test metrics are stored in `model/metadata.json`.
 
+The saved model artifact must be loaded with the same scikit-learn version used during training. Recreate or retrain the artifact when changing scikit-learn versions; otherwise model loading can produce compatibility warnings or invalid inference results.
+
 ## Backend API
 
 Run the backend locally from the repository root:
@@ -134,6 +136,19 @@ Run the complete test suite:
 
 ```bash
 uv run python -m pytest -q
+```
+
+The test suite covers:
+
+- FastAPI endpoints, request validation, response schemas, fallback predictions, CORS, and model loading.
+- The model input contract: feature names, feature order, default values, weekday conversion, and prediction probabilities.
+- The real checked-in model: artifact/metadata compatibility, inference on the real event dataset, and an end-to-end API prediction.
+- Streamlit application startup, prediction interaction, feature preparation, and chart helpers.
+
+Run the real production-model checks explicitly:
+
+```bash
+uv run python -m pytest tests/test_real_model.py -q
 ```
 
 Compile the application packages:
