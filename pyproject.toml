@@ -22,7 +22,9 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "anyio<4.15",
     "httpx>=0.28.1",
+    "httpx2>=2.13.0",
     "pytest>=8.0.0",
 ]
 

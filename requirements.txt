@@ -6,6 +6,8 @@ fastapi
 uvicorn[standard]
 streamlit
 httpx
+httpx2
+anyio<4.15
 pydantic
 matplotlib
 pytest

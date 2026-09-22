@@ -5,6 +5,7 @@ The running Streamlit app uses the backend model and does not call this module.
 
 import pandas as pd
 import streamlit as st
+from sklearn.calibration import CalibratedClassifierCV
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, f1_score, precision_score, recall_score, roc_auc_score
@@ -26,7 +27,10 @@ def train_models(session_data: pd.DataFrame) -> dict:
     models = {
         "Random Forest": RandomForestClassifier(n_estimators=300, min_samples_leaf=2, max_features="sqrt", class_weight="balanced", random_state=42, n_jobs=-1),
         "Logistic Regression": LogisticRegression(class_weight="balanced", max_iter=1000, random_state=42),
-        "SVC": SVC(class_weight="balanced", probability=True, random_state=42),
+        "SVC": CalibratedClassifierCV(
+            SVC(class_weight="balanced", random_state=42),
+            ensemble=False,
+        ),
     }
     comparison_rows = []
     fitted = {}
